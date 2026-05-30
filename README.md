@@ -60,6 +60,17 @@ cd frontend && npm run build      # emits frontend/dist
 cd ../backend && npm start         # backend serves dist/ as the SPA at :8080
 ```
 
+## Deploying to the web
+
+The app is deploy-ready: **frontend → Vercel**, **backend → Render**,
+**database → MongoDB Atlas**. The storage layer auto-selects its backend —
+**`MONGODB_URI` set → MongoDB** (durable alerts + settings; recent snapshots in
+an in-memory ring buffer, since the full firehose is ~1–2 GB/day), **unset →
+local SQLite** (full history on disk, the default for development). The frontend
+uses `VITE_API_BASE` to reach the backend cross-origin (relative via the Vite
+proxy in dev). See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full step-by-step,
+plus `render.yaml`, `frontend/vercel.json`, and the `.env.example` files.
+
 ## Configuration (`backend/.env`)
 
 All values have defaults — see `backend/.env.example` for the full list. Highlights:
