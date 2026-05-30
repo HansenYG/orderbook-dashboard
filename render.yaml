@@ -1,0 +1,40 @@
+# Render Blueprint for the backend (long-running Node web service).
+#
+# The backend holds open WebSockets to Binance/Hyperliquid and streams SSE to
+# browsers, so it must run as a persistent web service (NOT serverless). Storage
+# is MongoDB (set MONGODB_URI); snapshots are kept in memory, so no disk needed.
+#
+# Deploy: push this repo to GitHub, then in Render → "New" → "Blueprint" and pick
+# the repo. Render reads this file. Fill the secret values (MONGODB_URI,
+# CORS_ORIGIN) when prompted or in the service's Environment tab afterwards.
+#
+# NOTE: the free plan spins the service down after ~15 min with no traffic; the
+# next request triggers a cold start (~30-60s) and ingestion resumes. Upgrade the
+# plan (or add an external uptime ping) if you need it always-on.
+services:
+  - type: web
+    name: orderbook-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 22.17.0
+      - key: USE_SIMULATOR
+        value: "0" # set to "1" for a network-free synthetic demo
+      # MongoDB Atlas connection string — set as a secret in the dashboard.
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: orderbook
+      # Allowed browser origin(s) for CORS — set to your Vercel URL after the
+      # frontend deploys, e.g. https://orderbook-dashboard.vercel.app
+      # (comma-separate multiple; "*" allows any origin).
+      - key: CORS_ORIGIN
+        sync: false
+      - key: RECENT_BUFFER_SIZE
+        value: "200"

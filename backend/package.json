@@ -1,0 +1,22 @@
+{
+  "name": "orderbook-dashboard-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-time BTC perpetual orderbook ingestion, normalization, storage, and alerting backend",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/index.js",
+    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "db:stats": "node --disable-warning=ExperimentalWarning src/scripts/dbStats.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongodb": "^6.12.0",
+    "ws": "^8.18.0"
+  }
+}
