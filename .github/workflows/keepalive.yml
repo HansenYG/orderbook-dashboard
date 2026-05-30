@@ -1,0 +1,50 @@
+name: Keep backend awake
+
+# Render's free plan spins a web service down after ~15 min with no traffic.
+# This pings the health endpoint on a schedule so the service (and its exchange
+# ingestion) stays warm. Entirely optional — delete this file if you don't need
+# always-on, or if you upgrade the Render plan.
+#
+# SETUP: add a repository VARIABLE named BACKEND_URL with your Render URL:
+#   GitHub repo → Settings → Secrets and variables → Actions → Variables → New
+#   Name: BACKEND_URL   Value: https://orderbook-backend.onrender.com  (no trailing slash)
+#
+# CAVEATS: GitHub's scheduled runs are best-effort and can be delayed by a few
+# minutes under load, so an occasional sleep is possible. For tighter, more
+# reliable pinging use an external monitor like UptimeRobot (5-min interval) —
+# see DEPLOYMENT.md. GitHub also auto-disables schedules after 60 days of repo
+# inactivity (re-enable from the Actions tab).
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # every ~10 minutes
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+# Don't pile up overlapping pings if a run is slow.
+concurrency:
+  group: keepalive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /api/health
+        run: |
+          URL="${{ vars.BACKEND_URL }}"
+          if [ -z "$URL" ]; then
+            echo "::error::Set the repository variable BACKEND_URL (Settings → Secrets and variables → Actions → Variables)."
+            exit 1
+          fi
+          URL="${URL%/}" # strip any trailing slash
+          echo "Pinging $URL/api/health"
+          code=$(curl -sS -m 30 --retry 2 -o /dev/null -w "%{http_code}" "$URL/api/health" || echo "000")
+          echo "HTTP $code"
+          # A cold start may briefly 502/503 while Render wakes the service; the
+          # request itself still counts as traffic, so don't fail the job on those.
+          case "$code" in
+            200) echo "Backend awake." ;;
+            502|503|504) echo "::warning::Got $code (likely a cold start in progress) — wake-up triggered anyway." ;;
+            *) echo "::error::Unexpected status $code"; exit 1 ;;
+          esac

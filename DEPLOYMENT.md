@@ -140,8 +140,8 @@ redeploys. This restricts the API/SSE to your real frontend instead of `*`.
 
 - **Free Render spins down** after ~15 min of no traffic; the next visit triggers
   a ~30–60s cold start and ingestion resumes. An open dashboard tab counts as
-  traffic and keeps it awake. For always-on, upgrade the plan or ping
-  `/api/health` periodically (e.g. an UptimeRobot monitor).
+  traffic and keeps it awake. For always-on, upgrade the plan or use the
+  keep-alive options below.
 - **No snapshot history in the cloud** by design (see top). `/api/snapshots`
   returns the in-memory ring buffer (last `RECENT_BUFFER_SIZE` per exchange),
   which resets on restart. Run the app locally (SQLite mode) if you want the full
@@ -150,6 +150,30 @@ redeploys. This restricts the API/SSE to your real frontend instead of `*`.
   effectively forever for a demo.
 - **SSE through proxies:** the server sends a 15s heartbeat and
   `X-Accel-Buffering: no`, which keeps Render's proxy from buffering the stream.
+
+## Keeping the free backend awake (optional)
+
+Two ways to keep the Render free service from sleeping. Both just hit
+`/api/health` periodically (it's cheap — no DB or exchange work):
+
+**A. GitHub Actions (in-repo, zero extra accounts).** This repo includes
+`.github/workflows/keepalive.yml`, which pings every ~10 min. To enable it:
+- Push the repo to GitHub (the workflow runs from there, not locally).
+- Add a repository **variable** `BACKEND_URL` = your Render URL:
+  *Settings → Secrets and variables → Actions → Variables → New* →
+  `BACKEND_URL = https://orderbook-backend.onrender.com`.
+- Optionally trigger a first run from the **Actions** tab (*Run workflow*).
+- Caveat: GitHub's scheduled runs are best-effort and can be delayed, so an
+  occasional sleep is still possible. GitHub also disables schedules after 60
+  days of repo inactivity. Delete the file if you don't want this.
+
+**B. UptimeRobot (more reliable, no code).** Create a free
+[UptimeRobot](https://uptimerobot.com) HTTP(s) monitor:
+- URL: `https://<backend>/api/health`, interval **5 minutes**.
+- This both keeps the service warm and alerts you if it goes down.
+
+> A keep-alive defeats the point of the free tier's sleep (and uses a little
+> compute). If you expect real, always-on traffic, just upgrade the Render plan.
 
 ## Re-initialising the local git repo (if needed)
 
