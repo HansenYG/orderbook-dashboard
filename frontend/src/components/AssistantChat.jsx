@@ -30,8 +30,11 @@ function Message({ role, content, streaming }) {
   );
 }
 
+const PROVIDER_LABEL = { ollama: 'Ollama', anthropic: 'Claude' };
+
 export function AssistantChat() {
   const [enabled, setEnabled] = useState(null); // null = unknown, true/false once status loads
+  const [info, setInfo] = useState(null); // { provider, model }
   const [messages, setMessages] = useState([]); // { role, content }
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -45,9 +48,13 @@ export function AssistantChat() {
     let alive = true;
     api
       .getStatus()
-      .then((s) => alive && setEnabled(Boolean(s.aiAssistant)))
+      .then((s) => {
+        if (!alive) return;
+        setEnabled(Boolean(s.aiAssistant));
+        if (s.ai) setInfo(s.ai);
+      })
       // Status probe failed (backend not up yet) — stay optimistic and let the
-      // chat be used; a real 503 surfaces inline if the key is actually missing.
+      // chat be used; a real error surfaces inline if the provider isn't ready.
       .catch(() => alive && setEnabled(true));
     return () => {
       alive = false;
@@ -139,9 +146,17 @@ export function AssistantChat() {
   return (
     <section className="card assistant-chat">
       <div className="assistant-head">
-        <h2>
-          <span className="assistant-spark">✦</span> Market Assistant
-        </h2>
+        <div>
+          <h2>
+            <span className="assistant-spark">✦</span> Market Assistant
+          </h2>
+          {info && (
+            <span className="muted tiny assistant-sub">
+              via {PROVIDER_LABEL[info.provider] ?? info.provider}
+              {info.model ? ` · ${info.model}` : ''}
+            </span>
+          )}
+        </div>
         {messages.length > 0 && (
           <button type="button" className="chat-reset" onClick={reset} title="Clear conversation">
             Clear
@@ -151,8 +166,14 @@ export function AssistantChat() {
 
       {enabled === false ? (
         <div className="muted small placeholder">
-          The AI assistant isn't configured. Set <code>ANTHROPIC_API_KEY</code> on the backend and
-          restart to enable it.
+          {info?.provider === 'anthropic' ? (
+            <>
+              The AI assistant isn't configured. Set <code>ANTHROPIC_API_KEY</code> on the backend
+              (or switch <code>AI_PROVIDER</code> to <code>ollama</code>) and restart.
+            </>
+          ) : (
+            <>The AI assistant isn't available right now.</>
+          )}
         </div>
       ) : (
         <>

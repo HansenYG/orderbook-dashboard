@@ -60,12 +60,20 @@ export const config = {
   sseTickMs: num('SSE_TICK_MS', 150),
   sseHeartbeatMs: num('SSE_HEARTBEAT_MS', 15000),
 
-  // AI assistant (Claude). The chat endpoint is only enabled when a key is set;
-  // without it /api/chat returns 503 and the UI shows a "not configured" notice.
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
-  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-4-8',
+  // AI assistant. Provider-pluggable:
+  //   AI_PROVIDER=ollama    → free, local models via Ollama (default, no key)
+  //   AI_PROVIDER=anthropic → Claude (requires ANTHROPIC_API_KEY)
+  aiProvider: (process.env.AI_PROVIDER || 'ollama').toLowerCase(),
   chatMaxTokens: num('CHAT_MAX_TOKENS', 3000),
   chatHistoryLimit: num('CHAT_HISTORY_LIMIT', 20),
+
+  // Ollama (local, free). Run `ollama serve` and `ollama pull <model>` first.
+  ollamaHost: (process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/+$/, ''),
+  ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2',
+
+  // Anthropic (Claude) — only used when AI_PROVIDER=anthropic.
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-4-8',
 
   // Alert defaults (seed values; live values live in the settings table)
   alertDefaults: {

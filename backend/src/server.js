@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import { buildMarketContext } from './ai/marketContext.js';
-import { isAssistantConfigured, streamChat } from './ai/assistant.js';
+import { isAssistantConfigured, assistantInfo, streamChat } from './ai/assistant.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const START_TIME = Date.now();
@@ -41,6 +41,7 @@ export function createApp({ ruleEngine, sseHub, getStatuses, store }) {
       simulator: config.useSimulator,
       storage: store.name,
       aiAssistant: isAssistantConfigured(),
+      ai: assistantInfo(), // { provider, model }
     });
   });
 

@@ -85,8 +85,9 @@ All values have defaults — see `backend/.env.example` for the full list. Highl
 | `RETENTION_HOURS` | `24` | Snapshots older than this are pruned. **This bounds disk** — at ~10–25 updates/s the DB can grow ~1–2 GB/day, so lower it if needed |
 | `SSE_TICK_MS` | `150` | UI push cadence (decoupled from ingestion rate for smoothness) |
 | `ALERT_SPREAD_BPS` / `ALERT_IMBALANCE` / `ALERT_DISCREPANCY_PCT` | `5` / `0.6` / `0.1` | Seed alert thresholds (live values are editable in the UI and persisted in the DB) |
-| `ANTHROPIC_API_KEY` | _(empty)_ | Set to enable the AI assistant. Empty = chat disabled (the UI shows a notice and `/api/chat` returns 503) |
-| `ANTHROPIC_MODEL` | `claude-opus-4-8` | Model used for the assistant |
+| `AI_PROVIDER` | `ollama` | AI assistant backend: `ollama` (free, local) or `anthropic` (Claude) |
+| `OLLAMA_HOST` / `OLLAMA_MODEL` | `http://localhost:11434` / `llama3.2` | Ollama server + model (used when `AI_PROVIDER=ollama`) |
+| `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | _(empty)_ / `claude-opus-4-8` | Claude key + model (used when `AI_PROVIDER=anthropic`) |
 | `CHAT_MAX_TOKENS` / `CHAT_HISTORY_LIMIT` | `3000` / `20` | Max tokens per reply / prior turns sent for context |
 
 ## Unified schema
@@ -133,14 +134,23 @@ Claude alongside the conversation. It can summarize the market situation, give a
 short-term buy/sell lean, or flag anomalies (wide spreads, extreme imbalance,
 stale feeds, standing arbitrage). Replies stream token-by-token over `POST /api/chat`.
 
-- **Enable it** by setting `ANTHROPIC_API_KEY` in `backend/.env` (get a key at
-  [console.anthropic.com](https://console.anthropic.com/)). Without a key the panel
-  shows a "not configured" notice and the endpoint returns 503 — everything else
-  works unchanged.
-- The model only ever sees the normalized top-5 data the dashboard already shows;
-  it's instructed to ground every claim in those numbers and to label buy/sell
-  leans as *not financial advice*. The stable system prompt is prompt-cached to
-  keep cost down.
+The provider is pluggable via `AI_PROVIDER`:
+
+- **`ollama` (default — free, local, no API key).** Run models on your own machine:
+  1. Install Ollama — [ollama.com/download](https://ollama.com/download)
+  2. Start it — launch the app, or run `ollama serve`
+  3. Pull a model — `ollama pull llama3.2` (small/fast; for stronger analysis try
+     `ollama pull llama3.1`, then set `OLLAMA_MODEL=llama3.1`)
+
+  No key, no cost. If the server isn't running or the model isn't pulled, the chat
+  shows a clear inline message telling you the exact command to run.
+- **`anthropic` (Claude).** Set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY` in
+  `backend/.env` (key from [console.anthropic.com](https://console.anthropic.com/)).
+
+The active provider/model is shown in the chat panel header. The model only ever
+sees the normalized top-5 data the dashboard already shows; it's instructed to
+ground every claim in those numbers and to label buy/sell leans as *not financial
+advice*.
 
 ## Storage
 

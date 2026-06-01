@@ -38,7 +38,11 @@ services:
         sync: false
       - key: RECENT_BUFFER_SIZE
         value: "200"
-      # Anthropic API key for the in-dashboard AI assistant — set as a secret in
-      # the dashboard. Leave unset to disable the chat (everything else still works).
+      # AI assistant provider. The default "ollama" is local-only, so on Render
+      # (no local Ollama) use "anthropic" and set ANTHROPIC_API_KEY below — or
+      # point OLLAMA_HOST at a reachable Ollama server. Leave the key unset to
+      # ship without the chatbot (everything else still works).
+      - key: AI_PROVIDER
+        value: anthropic
       - key: ANTHROPIC_API_KEY
         sync: false
