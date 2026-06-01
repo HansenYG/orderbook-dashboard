@@ -2,6 +2,7 @@ import React from 'react';
 import { useEventStream } from './hooks/useEventStream.js';
 import { OrderbookView } from './components/OrderbookView.jsx';
 import { MetricsPanel } from './components/MetricsPanel.jsx';
+import { AssistantChat } from './components/AssistantChat.jsx';
 import { AlertsCenter } from './components/AlertsCenter.jsx';
 import { Toaster } from './components/Toaster.jsx';
 import { fmtClock } from './format.js';
@@ -48,6 +49,7 @@ export default function App() {
         <div className="layout-main">
           <OrderbookView books={books} status={status} />
           <MetricsPanel books={books} cross={cross} />
+          <AssistantChat />
         </div>
         <aside className="layout-side">
           <AlertsCenter alerts={alerts} />

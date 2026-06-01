@@ -60,6 +60,13 @@ export const config = {
   sseTickMs: num('SSE_TICK_MS', 150),
   sseHeartbeatMs: num('SSE_HEARTBEAT_MS', 15000),
 
+  // AI assistant (Claude). The chat endpoint is only enabled when a key is set;
+  // without it /api/chat returns 503 and the UI shows a "not configured" notice.
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-4-8',
+  chatMaxTokens: num('CHAT_MAX_TOKENS', 3000),
+  chatHistoryLimit: num('CHAT_HISTORY_LIMIT', 20),
+
   // Alert defaults (seed values; live values live in the settings table)
   alertDefaults: {
     spreadBps: num('ALERT_SPREAD_BPS', 5),

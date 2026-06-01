@@ -38,3 +38,7 @@ services:
         sync: false
       - key: RECENT_BUFFER_SIZE
         value: "200"
+      # Anthropic API key for the in-dashboard AI assistant — set as a secret in
+      # the dashboard. Leave unset to disable the chat (everything else still works).
+      - key: ANTHROPIC_API_KEY
+        sync: false

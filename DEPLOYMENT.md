@@ -76,6 +76,8 @@ The repo includes `render.yaml`, so Render can configure the service for you.
 3. When prompted for the `sync: false` secrets, set:
    - **`MONGODB_URI`** = the Atlas string from Step 1.
    - **`CORS_ORIGIN`** = `*` for now (we'll lock it to the Vercel URL in Step 5).
+   - **`ANTHROPIC_API_KEY`** = _(optional)_ your Anthropic key to enable the AI
+     assistant. Leave blank to ship without the chatbot.
 4. **Apply** / **Create**. First build runs `npm ci` then `npm start`.
 
 **Option B — Manual:** New → **Web Service** → pick the repo →

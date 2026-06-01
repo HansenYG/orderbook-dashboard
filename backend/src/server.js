@@ -6,6 +6,8 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
+import { buildMarketContext } from './ai/marketContext.js';
+import { isAssistantConfigured, streamChat } from './ai/assistant.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const START_TIME = Date.now();
@@ -38,6 +40,7 @@ export function createApp({ ruleEngine, sseHub, getStatuses, store }) {
       sseClients: sseHub.clientCount(),
       simulator: config.useSimulator,
       storage: store.name,
+      aiAssistant: isAssistantConfigured(),
     });
   });
 
@@ -83,6 +86,77 @@ export function createApp({ ruleEngine, sseHub, getStatuses, store }) {
       res.json(await store.listSnapshots({ exchange, limit }));
     } catch (err) {
       next(err);
+    }
+  });
+
+  // ── AI assistant chat (streaming) ─────────────────────────────────────────
+  // POST { messages: [{ role: 'user'|'assistant', content: string }, ...] }.
+  // The latest dashboard data is injected server-side, so the model always reads
+  // the live snapshot. The response body is a plain-text token stream.
+  api.post('/chat', async (req, res) => {
+    if (!isAssistantConfigured()) {
+      return res
+        .status(503)
+        .json({ error: 'AI assistant is not configured. Set ANTHROPIC_API_KEY on the backend.' });
+    }
+
+    // ── Validate the conversation payload ──
+    const raw = Array.isArray(req.body?.messages) ? req.body.messages : null;
+    if (!raw || raw.length === 0) {
+      return res.status(400).json({ error: 'Request body must include a non-empty "messages" array.' });
+    }
+    const messages = [];
+    for (const m of raw) {
+      const role = m?.role === 'assistant' ? 'assistant' : 'user';
+      const content = typeof m?.content === 'string' ? m.content.trim() : '';
+      if (!content) continue;
+      // Cap any single message to keep token usage and abuse in check.
+      messages.push({ role, content: content.slice(0, 4000) });
+    }
+    if (messages.length === 0 || messages[messages.length - 1].role !== 'user') {
+      return res.status(400).json({ error: 'The last message must be a non-empty user message.' });
+    }
+
+    // Build the market context before opening the stream so a failure here is a
+    // clean JSON error rather than a half-written stream.
+    let marketContext;
+    try {
+      marketContext = await buildMarketContext({
+        sseHub,
+        store,
+        thresholds: ruleEngine.getThresholds(),
+      });
+    } catch (err) {
+      return res.status(500).json({ error: `Failed to read market data: ${err.message}` });
+    }
+
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no', // disable proxy buffering so tokens flush live
+    });
+    res.flushHeaders?.();
+
+    // Abort the upstream request if the browser disconnects.
+    const ac = new AbortController();
+    req.on('close', () => ac.abort());
+
+    try {
+      await streamChat({
+        messages,
+        marketContext,
+        signal: ac.signal,
+        onText: (delta) => res.write(delta),
+      });
+      res.end();
+    } catch (err) {
+      if (ac.signal.aborted) {
+        return res.end(); // client went away — nothing to report
+      }
+      console.error('[chat] stream failed:', err.message);
+      // Headers are already sent; surface the error inline so the UI can show it.
+      res.write(`\n\n⚠️ Assistant error: ${err.message}`);
+      res.end();
     }
   });
 
