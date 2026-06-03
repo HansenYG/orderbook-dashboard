@@ -38,11 +38,17 @@ services:
         sync: false
       - key: RECENT_BUFFER_SIZE
         value: "200"
-      # AI assistant provider. The default "ollama" is local-only, so on Render
-      # (no local Ollama) use "anthropic" and set ANTHROPIC_API_KEY below — or
-      # point OLLAMA_HOST at a reachable Ollama server. Leave the key unset to
-      # ship without the chatbot (everything else still works).
+      # AI assistant. Using Ollama (free) requires an internet-reachable Ollama —
+      # Render cannot see a local one, so OLLAMA_HOST must be a PUBLIC URL (a
+      # tunnel to your machine, or a hosted Ollama). See DEPLOYMENT.md →
+      # "Use Ollama with the hosted site". Whatever runs Ollama must stay online.
       - key: AI_PROVIDER
-        value: anthropic
-      - key: ANTHROPIC_API_KEY
+        value: ollama
+      # Public URL of your Ollama (e.g. an ngrok/cloudflared tunnel). No trailing
+      # slash. Set as a secret in the dashboard since it changes per tunnel.
+      - key: OLLAMA_HOST
         sync: false
+      - key: OLLAMA_MODEL
+        value: llama3.2
+      # Prefer always-on, paid Claude instead? Set AI_PROVIDER=anthropic and add
+      # ANTHROPIC_API_KEY (sync:false) rather than the OLLAMA_* vars above.

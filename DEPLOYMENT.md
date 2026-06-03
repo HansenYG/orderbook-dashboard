@@ -129,6 +129,49 @@ redeploys. This restricts the API/SSE to your real frontend instead of `*`.
 
 ---
 
+## Step 6 — (Optional) Free AI assistant via Ollama
+
+The chatbot defaults to **Ollama** (free, local). Ollama runs on a machine *you*
+control — Render can't reach `localhost`, so you expose your Ollama over the
+internet and point Render at that public URL.
+
+> ⚠️ **Trade-offs, be aware:** whatever runs Ollama (e.g. your PC) **must stay
+> online** — if it sleeps, the assistant goes down. This network may also block
+> QUIC and need `--protocol http2` (below). This suits a demo; for an always-on
+> hosted assistant, run Ollama on a paid VM or use Claude (`AI_PROVIDER=anthropic`
+> + `ANTHROPIC_API_KEY`).
+
+**Key gotcha (verified):** Ollama only trusts a `localhost` Host header — through
+a raw tunnel it returns **403**. The tunnel must rewrite the Host header to
+`localhost:11434`.
+
+1. **Run Ollama** locally: install from [ollama.com](https://ollama.com/download),
+   then `ollama serve` and `ollama pull llama3.2`.
+
+2. **Expose it with a tunnel.** Quick test tunnel (no account, but the URL is
+   random and changes on restart) using [cloudflared](https://github.com/cloudflare/cloudflared):
+   ```
+   cloudflared tunnel --protocol http2 --http-host-header localhost:11434 --url http://localhost:11434
+   ```
+   - `--http-host-header localhost:11434` is what clears the 403 — don't omit it.
+   - `--protocol http2` is only needed if your network blocks QUIC (UDP/443).
+   - It prints `https://<random>.trycloudflare.com` — that's your `OLLAMA_HOST`.
+
+   For a **stable** URL (so you set Render once): use an **ngrok** free static
+   domain, or a **Cloudflare named tunnel** (set `originRequest.httpHostHeader:
+   localhost:11434` in its config). Both need a free account.
+
+3. **Point Render at it** — Render → backend → **Environment**:
+   - `AI_PROVIDER` = `ollama`
+   - `OLLAMA_HOST` = your tunnel URL (no trailing slash)
+   - `OLLAMA_MODEL` = `llama3.2` (or whatever you pulled)
+
+   Save → redeploy. Verify at `https://<backend>/api/status` →
+   `"aiAssistant": true`, `"ai": { "provider": "ollama", "model": "llama3.2" }`.
+   Then open the dashboard and ask the assistant a question.
+
+---
+
 ## Verify the live app
 
 1. Open the Vercel URL. The header should show **Stream live** and the exchange

@@ -68,7 +68,7 @@ export const config = {
   chatHistoryLimit: num('CHAT_HISTORY_LIMIT', 20),
 
   // Ollama (local, free). Run `ollama serve` and `ollama pull <model>` first.
-  ollamaHost: (process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/+$/, ''),
+  ollamaHost: (process.env.OLLAMA_HOST || 'http://localhost:11434').trim().replace(/\/+$/, ''),
   ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2',
 
   // Anthropic (Claude) — only used when AI_PROVIDER=anthropic.

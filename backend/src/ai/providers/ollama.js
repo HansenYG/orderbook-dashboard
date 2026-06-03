@@ -35,7 +35,12 @@ export async function stream({ system, messages, onText, signal }) {
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        // Bypass ngrok's free-tier browser-warning interstitial when OLLAMA_HOST
+        // is an ngrok tunnel. Ollama ignores this header, so it's harmless locally.
+        'ngrok-skip-browser-warning': 'true',
+      },
       body: JSON.stringify(body),
       signal,
     });
@@ -48,14 +53,23 @@ export async function stream({ system, messages, onText, signal }) {
   }
 
   if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    if (res.status === 404) {
+    const detail = (await res.text().catch(() => '')) || '';
+    // A tunnel that's offline/misconfigured (e.g. ngrok) returns its OWN HTML
+    // error — often a 404 — not Ollama's JSON. Don't mislabel that as a missing
+    // model: the real problem is the host/tunnel isn't serving Ollama.
+    if (/ERR_NGROK|is offline|cloudflare|<!doctype html|<html/i.test(detail)) {
       throw new Error(
-        `Ollama model "${config.ollamaModel}" isn't available. Pull it first: ` +
-          `ollama pull ${config.ollamaModel}  (or set OLLAMA_MODEL to one you have).`,
+        `${config.ollamaHost} responded, but it's not reaching Ollama — the tunnel ` +
+          `looks offline. Make sure Ollama ("ollama serve") and the tunnel are both running.`,
       );
     }
-    throw new Error(`Ollama returned ${res.status}: ${detail || res.statusText}`);
+    if (res.status === 404) {
+      throw new Error(
+        `Ollama model "${config.ollamaModel}" isn't available at ${config.ollamaHost}. ` +
+          `Pull it first: ollama pull ${config.ollamaModel} (or set OLLAMA_MODEL to one you have).`,
+      );
+    }
+    throw new Error(`Ollama returned ${res.status}: ${(detail || res.statusText).slice(0, 200)}`);
   }
   if (!res.body) throw new Error('Ollama returned an empty response stream.');
 
